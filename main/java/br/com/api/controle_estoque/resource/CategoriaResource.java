@@ -1,12 +1,12 @@
 package br.com.api.controle_estoque.resource;
 
-import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,11 +14,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import br.com.api.controle_estoque.event.RecursoCriadoEvent;
 import br.com.api.controle_estoque.model.Categoria;
 import br.com.api.controle_estoque.repository.CategoriaRepository;
 
@@ -28,6 +26,9 @@ public class CategoriaResource {
 	
 	@Autowired
 	private CategoriaRepository categoriaRepository;
+
+	@Autowired
+	private ApplicationEventPublisher publisher;		
 	
 	@GetMapping
 	public ResponseEntity<List<Categoria>> listarTodas(){
@@ -42,11 +43,10 @@ public class CategoriaResource {
 	}
 	
 	@PostMapping
-	@ResponseStatus(HttpStatus.CREATED)
-	public void salvar(@RequestBody Categoria categoria, HttpServletResponse response) {
+	public ResponseEntity<Categoria> salvar(@RequestBody @Valid Categoria categoria, HttpServletResponse response) {
 		Categoria categoriaInserida = categoriaRepository.save(categoria);
-		URI uri = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{codigo}").buildAndExpand(categoriaInserida.getCodigo()).toUri();
-		response.setHeader("Location", uri.toASCIIString());
+		publisher.publishEvent(new RecursoCriadoEvent(this, response, categoriaInserida.getCodigo()));
+		return ResponseEntity.status(HttpStatus.CREATED).body(categoriaInserida);
 	}
 
 }
